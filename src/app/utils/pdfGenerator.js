@@ -314,8 +314,8 @@ function buildTCPage2HTML(tcPage2, totalPages) {
 
         <div class="tc-contact-box">
           <div class="label">GET IN TOUCH</div>
-          <div class="row"><span class="icon">&#9993;</span> connect@reelongo.com &nbsp;&nbsp;<span class="icon">&#9742;</span> +91 9988338180</div>
-          <div class="row"><span class="icon">&#127760;</span> reelongo.com/terms &nbsp;|&nbsp; reelongo.com/cancellation</div>
+          <div class="row"><span class="icon">&#9993;</span> <a href="mailto:connect@reelongo.com" style="color: inherit; text-decoration: none;">connect@reelongo.com</a> &nbsp;&nbsp;<span class="icon">&#9742;</span> <a href="tel:+919988338180" style="color: inherit; text-decoration: none;">+91 9988338180</a></div>
+          <div class="row"><span class="icon">&#127760;</span> <a href="https://www.reelongo.com/terms-conditions" style="color: inherit; text-decoration: none;">reelongo.com/terms-conditions</a> &nbsp;|&nbsp; <a href="https://www.reelongo.com/refund-cancellation" style="color: inherit; text-decoration: none;">reelongo.com/refund-cancellation</a></div>
         </div>
       </div>
       <div class="footer">
@@ -345,8 +345,25 @@ async function renderPageToCanvas(html2canvas, pageHtml) {
     windowHeight: 1123
   });
 
+  const links = [];
+  const aTags = target.querySelectorAll('a[href]');
+  const pageRect = target.getBoundingClientRect();
+  aTags.forEach(a => {
+    const rect = a.getBoundingClientRect();
+    const relX = rect.left - pageRect.left;
+    const relY = rect.top - pageRect.top;
+    
+    links.push({
+      url: a.getAttribute('href'),
+      x: (relX * 210) / 794,
+      y: (relY * 297) / 1123,
+      w: (rect.width * 210) / 794,
+      h: (rect.height * 297) / 1123
+    });
+  });
+
   document.body.removeChild(wrapper);
-  return canvas;
+  return { canvas, links };
 }
 
 export async function generatePDF(state) {
@@ -379,10 +396,13 @@ export async function generatePDF(state) {
   const pageHeightMm = 297;
 
   for (let i = 0; i < pageHtmls.length; i++) {
-    const canvas = await renderPageToCanvas(html2canvas, pageHtmls[i]);
+    const { canvas, links } = await renderPageToCanvas(html2canvas, pageHtmls[i]);
     const imgData = canvas.toDataURL('image/jpeg', 0.98);
     if (i > 0) pdf.addPage();
     pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthMm, pageHeightMm);
+    links.forEach(l => {
+      pdf.link(l.x, l.y, l.w, l.h, { url: l.url });
+    });
   }
 
   pdf.save(`Quotation_${clientName || 'Client'}.pdf`);
